@@ -55,17 +55,11 @@ object WebCrawlerService {
           case GetTitleAttempt(uri, response, Left(error)) =>
             error match {
               case error: UnexpectedError =>
-                titles.copy(errors =
-                  TitleError(uri, "Unexpected error", Some(error)) +: titles.errors
-                )
+                titles.copy(errors = TitleError(uri, "Unexpected error", Some(error)) +: titles.errors)
               case error: ParserError     =>
-                titles.copy(errors =
-                  TitleError(uri, "Error during parsing html", Some(error)) +: titles.errors
-                )
+                titles.copy(errors = TitleError(uri, "Error during parsing html", Some(error)) +: titles.errors)
               case error: BadRequestError =>
-                titles.copy(errors =
-                  TitleError(uri, "Request part is malformed", Some(error)) +: titles.errors
-                )
+                titles.copy(errors = TitleError(uri, "Request part is malformed", Some(error)) +: titles.errors)
               case error: NotFoundError   =>
                 titles.copy(errors =
                   TitleError(
