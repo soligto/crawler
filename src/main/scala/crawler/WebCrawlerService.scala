@@ -93,7 +93,7 @@ object WebCrawlerService {
               {
                 for {
                   uri      <- Stream.eval(Uri.fromString(uri) match {
-                                case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage()))
+                                case Left(error) => ApplicativeError.raiseError[Uri](error)
                                 case Right(uri)  => Monad[F].pure(uri)
                               })
                   response <- client.stream(Request(uri = uri))
