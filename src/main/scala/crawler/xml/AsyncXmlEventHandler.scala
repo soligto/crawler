@@ -7,7 +7,7 @@ package crawler.xml
  * Тем не менее, работает это так, что AsyncXmlStreamReader парсит XML по мере загрузки response body
  * и с помощью Cursor'a позволяет обрабатывать наступаемые события в AsyncXmlParser.
  *
- * В итоге реализовал более простое решение в TagParserPipe, но этот код решил оставить.
+ * В итоге реализовал более простое решение в RegexTagParser, но этот код решил оставить для примера такого варианта работы.
  */
 trait AsyncXmlEventHandler[A] {
   type Self = AsyncXmlEventHandler[A]
