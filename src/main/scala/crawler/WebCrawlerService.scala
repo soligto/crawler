@@ -19,7 +19,7 @@ case class GetTitleAttempt[F[_]](
 object WebCrawlerService {
   def apply[F[_]: Monad: Concurrent: BracketThrow](
     client: Client[F],
-    titleParser: Parser[Tag],
+    titleParser: F[Parser[Tag]],
     parserPipe: Parser[Tag] => Pipe[F, Array[Byte], Either[CrawlerError, Tag]]
   )(implicit ApplicativeError: ApplicativeError[F, Throwable]): WebCrawlerService[F] =
     new WebCrawlerService[F] {
@@ -29,14 +29,16 @@ object WebCrawlerService {
        * Стрим берёт первое распарсенное значение, а в случае отсутствия элемента возвращает ошибку Title not found.
        */
       private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt[F]] = {
-        response.body.chunks
-          .map(_.toArray)
-          .through(parserPipe(titleParser))
-          .take(1)
-          .map { tag =>
-            GetTitleAttempt[F](Right(uri), Some(response), tag)
-          }
-          .lastOr(GetTitleAttempt[F](Right(uri), Some(response), Left(NotFoundError("Title not found"))))
+        Stream.eval(titleParser).flatMap { parser =>
+          response.body.chunks
+            .map(_.toArray)
+            .through(parserPipe(parser))
+            .take(1)
+            .map { tag =>
+              GetTitleAttempt[F](Right(uri), Some(response), tag)
+            }
+            .lastOr(GetTitleAttempt[F](Right(uri), Some(response), Left(NotFoundError("Title not found"))))
+        }
       }
 
       /**

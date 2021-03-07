@@ -13,12 +13,14 @@ class AsyncXmlStreamParser[A](eventHandler: AsyncXmlEventHandler[A], reader: Asy
   override def parse(bytes: Array[Byte]): Either[CrawlerError, (Seq[A], Parser[A])] = {
     reader.getInputFeeder.feedInput(bytes, 0, bytes.length)
     @tailrec def handle(eh: AsyncXmlEventHandler[A]): AsyncXmlEventHandler[A] =
-      reader.next match {
-        case XMLStreamConstants.START_ELEMENT => handle(eh.onElementStart(reader.getName.getLocalPart))
-        case XMLStreamConstants.END_ELEMENT   => handle(eh.onElementStart(reader.getName.getLocalPart))
-        case XMLStreamConstants.CHARACTERS    => handle(eh.onCharacters(reader.getText))
-        case _                                => handle(eh)
-      }
+      if (eh.finished) eh
+      else
+        reader.next match {
+          case XMLStreamConstants.START_ELEMENT => handle(eh.onElementStart(reader.getName.getLocalPart))
+          case XMLStreamConstants.END_ELEMENT   => handle(eh.onElementEnd(reader.getName.getLocalPart))
+          case XMLStreamConstants.CHARACTERS    => handle(eh.onCharacters(reader.getText))
+          case _                                => handle(eh)
+        }
 
     try {
       val (results, handler) = handle(eventHandler).result
@@ -32,7 +34,7 @@ class AsyncXmlStreamParser[A](eventHandler: AsyncXmlEventHandler[A], reader: Asy
 object AsyncXmlStreamParser {
   val XmlStreamEnd = 257
 
-  def apply[A](encoding: String = "UTF-8", eventHandler: AsyncXmlEventHandler[A]): AsyncXmlStreamParser[A] = {
+  def apply[A](eventHandler: AsyncXmlEventHandler[A], encoding: String = "UTF-8"): AsyncXmlStreamParser[A] = {
     val inputFactory = new InputFactoryImpl
     val cfg          = inputFactory.getNonSharedConfig(null, null, null, false, false)
     cfg.setActualEncoding(encoding)
