@@ -8,7 +8,6 @@ import scala.util.matching.Regex
 
 /**
  * Простой парсер, который ищёт нужный тег с помощью регулярного выражения.
- * Принцип работы такой же, как и в AsyncXmlParserPipe - парсим каждый фрагмент, стараясь найти там нужный tag.
  */
 case class TagParser(tag: Regex, content: ArraySeq[Byte]) {
   def parse(bytes: Array[Byte]): (Option[String], TagParser) = {
@@ -21,6 +20,11 @@ object TagParser {
   def apply(tag: String) = new TagParser(s"<$tag>(.*)<\\/$tag>".r, ArraySeq())
 }
 
+/**
+ * Pipe, извлекающий объект из стрима массива байт.
+ * Каждый фрагмент response body поступает в TagParser, без ожидания, пока наберётся чанк фрагментов (uncons1).
+ * Как только TagParser обнаруживает элемент, TagParserPipe отправляет их в стрим для дальнейшей обработки.
+ */
 object TagParserPipe {
   type ByteArrayParserPipe[F[_], A] = Pipe[F, Array[Byte], Either[CrawlerError, A]]
 
