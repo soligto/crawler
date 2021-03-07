@@ -15,6 +15,11 @@ case class GetTitleAttempt[F[_]](
   response: Option[Response[F]],
   result: Either[CrawlerError, Tag]
 )
+object GetTitleAttempt {
+  def apply[F[_]](uri: String, error: CrawlerError): GetTitleAttempt[F] = {
+    GetTitleAttempt[F](Left(uri), None, Left(error))
+  }
+}
 
 object WebCrawlerService {
   def apply[F[_]: Monad: Concurrent](
@@ -93,15 +98,16 @@ object WebCrawlerService {
               {
                 for {
                   uri      <- Stream.eval(Uri.fromString(uri) match {
-                                case Left(error) => ApplicativeError.raiseError[Uri](error)
+                                case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
                                 case Right(uri)  => Monad[F].pure(uri)
                               })
                   response <- client.stream(Request(uri = uri))
                   value    <- responseToTitle(uri, response)
                 } yield value
               }.attempt.map {
-                case Left(error)    => GetTitleAttempt[F](Left(uri), None, Left(UnexpectedError(error.getMessage)))
-                case Right(attempt) => attempt
+                case Left(error: CrawlerError) => GetTitleAttempt[F](uri, error)
+                case Left(error)               => GetTitleAttempt[F](uri, UnexpectedError(error.getMessage))
+                case Right(attempt)            => attempt
               }
             }.iterator
           }.parJoinUnbounded
