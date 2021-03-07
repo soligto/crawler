@@ -11,7 +11,7 @@ case class BadRequestError(cause: String) extends Exception(cause) with CrawlerE
 object CrawlerError {
   implicit val encoder: Encoder[CrawlerError] = (error: CrawlerError) =>
     Json.obj(
-      ("type", Json.fromString(error.getClass.getName)),
+      ("type", Json.fromString(error.getClass.getSimpleName)),
       (
         "message",
         error match {
