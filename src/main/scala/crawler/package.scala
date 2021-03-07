@@ -3,8 +3,6 @@ import io.circe.{ Decoder, Encoder }
 import org.http4s.Uri
 
 package object crawler {
-  import CrawlerError._
-
   implicit val uriEncoder: Encoder[Uri] = Encoder.encodeString.contramap(_.renderString)
   implicit val uriDecoder: Decoder[Uri] = Decoder.decodeString.map(Uri.unsafeFromString)
 
