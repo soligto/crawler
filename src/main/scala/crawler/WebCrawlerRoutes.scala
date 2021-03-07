@@ -19,8 +19,11 @@ class WebCrawlerRoutes[F[_]: Async] extends Http4sDsl[F] {
             }
           }
           .handleErrorWith {
+            case e: BadRequestError =>
+              val error: CrawlerError = e
+              BadRequest(error.asJson)
             case e: Exception =>
-              val error: CrawlerError = UnexpectedError(e.getMessage + e.getStackTrace.toList.mkString("\n"))
+              val error: CrawlerError = UnexpectedError(e.getMessage)
               InternalServerError(error.asJson)
           }
     }

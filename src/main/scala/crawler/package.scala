@@ -28,6 +28,4 @@ package object crawler {
 
   implicit val titlesResponseDecoder: Decoder[TitlesResponse] = deriveDecoder
   implicit val titlesResponseEncoder: Encoder[TitlesResponse] = deriveEncoder
-
-  implicit val encoder: Encoder[BadRequestError] = deriveEncoder
 }
