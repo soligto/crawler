@@ -5,9 +5,8 @@ import fs2.{ Chunk, Pipe, Pull, Stream }
 
 /**
  * Pipe, извлекающий объект из стрима массива байт.
- * Каждый фрагмент response body поступает в AsyncXmlStreamReader, без ожидания, пока наберётся чанк фрагментов (uncons1).
- * Как только AsyncParser[A] обнаруживает элементы на основании событий, прочитанных из курсора AsyncXmlStreamReader,
- * AsyncXmlParserPipe отправляет их в стрим для дальнейшей обработки.
+ * Каждый фрагмент response body поступает в Parser, без ожидания, пока наберётся чанк фрагментов (uncons1).
+ * Как только Parser[A] обнаруживает элементы, он отправляет их в стрим для дальнейшей обработки.
  */
 object ParserPipe {
   type ByteArrayParserPipe[F[_], A] = Pipe[F, Array[Byte], Either[CrawlerError, A]]
