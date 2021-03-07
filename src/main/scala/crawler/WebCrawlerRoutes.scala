@@ -1,9 +1,9 @@
 package crawler
 
-import cats.effect._
+import cats.effect.Async
 import cats.syntax.all._
 import io.circe.syntax.EncoderOps
-import org.http4s._
+import org.http4s.HttpRoutes
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
 

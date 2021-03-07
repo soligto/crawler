@@ -1,6 +1,6 @@
 package crawler
 
-import cats.effect.{ BracketThrow, Concurrent }
+import cats.effect.Concurrent
 import cats.{ ApplicativeError, Monad }
 import fs2.{ Pipe, Stream }
 import org.http4s.client.Client
