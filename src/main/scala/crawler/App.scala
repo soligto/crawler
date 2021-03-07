@@ -14,8 +14,8 @@ object App extends IOApp {
         .withHttpApp {
           Router[IO](
             "/" -> {
-              val titleParser = TagParser("title")
-              val parserPipe  = TagParserPipe.apply[IO] _
+              val titleParser = RegexTagParser("title")
+              val parserPipe  = ParserPipe.apply[IO, Tag] _
               new WebCrawlerRoutes[IO].routes(WebCrawlerService(client, titleParser, parserPipe))
             }
           ).orNotFound

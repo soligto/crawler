@@ -9,7 +9,7 @@ import org.scalamock.scalatest.MockFactory
 
 class WebCrawlerServiceTest extends Test with MockFactory {
   def getService(client: Client[IO])(implicit cs: ContextShift[IO]): WebCrawlerService[IO] = {
-    WebCrawlerService[IO](client, TagParser("title"), TagParserPipe.apply[IO])
+    WebCrawlerService[IO](client, RegexTagParser("title"), ParserPipe.apply[IO, Tag])
   }
 
   "WebCrawlerService" should {
