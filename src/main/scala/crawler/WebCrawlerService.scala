@@ -47,25 +47,29 @@ object WebCrawlerService {
         attempt match {
           case GetTitleAttempt(uri, response, Left(error)) =>
             error match {
-              case UnexpectedError(cause) =>
+              case error: UnexpectedError =>
                 titles.copy(errors =
-                  TitleError(uri, "Unexpected error", cause.getLocalizedMessage) +: titles.errors
+                  TitleError(uri, "Unexpected error", Some(error)) +: titles.errors
                 )
-              case ParserError(cause)     =>
+              case error: ParserError     =>
                 titles.copy(errors =
-                  TitleError(uri, "Error during parsing html", cause.getLocalizedMessage) +: titles.errors
+                  TitleError(uri, "Error during parsing html", Some(error)) +: titles.errors
                 )
-              case NotFoundError(cause)   =>
+              case error: BadRequestError =>
+                titles.copy(errors =
+                  TitleError(uri, "Request part is malformed", Some(error)) +: titles.errors
+                )
+              case error: NotFoundError   =>
                 titles.copy(errors =
                   TitleError(
                     uri,
-                    cause,
-                    s"Response code ${response.map(_.status.toString()).getOrElse("")}"
+                    s"Response code ${response.map(_.status.toString()).getOrElse("")}",
+                    Some(error)
                   ) +: titles.errors
                 )
             }
           case GetTitleAttempt(uri @ Left(_), _, _)        =>
-            titles.copy(errors = TitleError(uri, s"Not a uri", "") +: titles.errors)
+            titles.copy(errors = TitleError(uri, s"Not a uri", None) +: titles.errors)
           case GetTitleAttempt(Right(uri), _, Right(tag))  =>
             titles.copy(titles = Title(uri, tag.content) +: titles.titles)
         }
@@ -87,14 +91,14 @@ object WebCrawlerService {
               {
                 for {
                   uri      <- Stream.eval(Uri.fromString(uri) match {
-                                case Left(error) => ApplicativeError.raiseError[Uri](error)
+                                case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage()))
                                 case Right(uri)  => Monad[F].pure(uri)
                               })
                   response <- client.stream(Request(uri = uri))
                   value    <- responseToTitle(uri, response)
                 } yield value
               }.attempt.map {
-                case Left(error)    => GetTitleAttempt[F](Left(uri), None, Left(UnexpectedError(error)))
+                case Left(error)    => GetTitleAttempt[F](Left(uri), None, Left(UnexpectedError(error.getMessage)))
                 case Right(attempt) => attempt
               }
             }.iterator

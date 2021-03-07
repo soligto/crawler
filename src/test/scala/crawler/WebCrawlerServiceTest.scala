@@ -1,6 +1,6 @@
 package crawler
 
-import cats.effect.{ContextShift, IO}
+import cats.effect.{ ContextShift, IO }
 import fs2.Stream
 import org.http4s.Response
 import org.http4s.client.Client
@@ -13,14 +13,20 @@ class WebCrawlerServiceTest extends Test with MockFactory {
   }
 
   "WebCrawlerService" should {
-    "return a title of the requested web page" in {
-      (client: Client[IO], context: Context) => {
+    "return a title of the requested web page" in { (client: Client[IO], context: Context) =>
+      {
         import context._
-        (client.stream _).expects(*).returning(Stream(Response[IO](
-          body = Stream("<html>", "<title>", "test title", "</title>").flatMap { part =>
-            Stream.fromIterator[IO](part.getBytes.iterator)
-          }
-        )))
+        (client.stream _)
+          .expects(*)
+          .returning(
+            Stream(
+              Response[IO](
+                body = Stream("<html>", "<title>", "test title", "</title>").flatMap { part =>
+                  Stream.fromIterator[IO](part.getBytes.iterator)
+                }
+              )
+            )
+          )
 
         val service = getService(client)
         for {
@@ -32,27 +38,35 @@ class WebCrawlerServiceTest extends Test with MockFactory {
       }
     }
 
-    "return an error because of the empty response" in {
-      (context: Context, client: Client[IO]) => {
+    "return an error because of the empty response" in { (context: Context, client: Client[IO]) =>
+      {
         import context._
-        (client.stream _).expects(*).returning(Stream(Response[IO](
-          body = Stream("<html>", "</html>").flatMap { part =>
-            Stream.fromIterator[IO](part.getBytes.iterator)
-          }
-        )))
+        (client.stream _)
+          .expects(*)
+          .returning(
+            Stream(
+              Response[IO](
+                body = Stream("<html>", "</html>").flatMap { part =>
+                  Stream.fromIterator[IO](part.getBytes.iterator)
+                }
+              )
+            )
+          )
 
         val service = getService(client)
         for {
           titlesResponse <- service.getTitles(TitlesRequest(Vector("http://url")))
         } yield {
-          titlesResponse.errors shouldBe Vector(TitleError(Right(uri"http://url"), "Title not found", "Response code 200 OK"))
+          titlesResponse.errors shouldBe Vector(
+            TitleError(Right(uri"http://url"), "Response code 200 OK", Some(NotFoundError("Title not found")))
+          )
           titlesResponse.titles shouldBe Vector()
         }
       }
     }
 
-    "return an error because of the error response" in {
-      (context: Context, client: Client[IO]) => {
+    "return an error because of the error response" in { (context: Context, client: Client[IO]) =>
+      {
         import context._
         (client.stream _).expects(*).returning(Stream.eval(IO.raiseError(new RuntimeException("connect error"))))
 
@@ -60,7 +74,9 @@ class WebCrawlerServiceTest extends Test with MockFactory {
         for {
           titlesResponse <- service.getTitles(TitlesRequest(Vector("http://url")))
         } yield {
-          titlesResponse.errors shouldBe Vector(TitleError(Left("http://url"), "Unexpected error", "connect error"))
+          titlesResponse.errors shouldBe Vector(
+            TitleError(Left("http://url"), "Unexpected error", Some(UnexpectedError("connect error")))
+          )
           titlesResponse.titles shouldBe Vector()
         }
       }

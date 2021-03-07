@@ -1,9 +1,37 @@
 package crawler
 
-sealed trait CrawlerError
-case class UnexpectedError(cause: Throwable) extends CrawlerError
-case class ParserError(cause: Throwable)     extends CrawlerError
-case class NotFoundError(error: String)      extends CrawlerError
+import io.circe.{ Decoder, Encoder, HCursor, Json }
 
-sealed trait WebCrawlerServiceError
-case class BadRequestError(error: String) extends Exception(error) with WebCrawlerServiceError
+sealed trait CrawlerError
+case class UnexpectedError(cause: String) extends Exception(cause) with CrawlerError
+case class ParserError(cause: String)     extends Exception(cause) with CrawlerError
+case class NotFoundError(cause: String)   extends Exception(cause) with CrawlerError
+case class BadRequestError(cause: String) extends Exception(cause) with CrawlerError
+
+object CrawlerError {
+  implicit val encoder: Encoder[CrawlerError] = (error: CrawlerError) =>
+    Json.obj(
+      ("error", Json.fromString(error.getClass.getName)),
+      (
+        "message",
+        error match {
+          case UnexpectedError(cause) => Json.fromString(cause)
+          case ParserError(cause)     => Json.fromString(cause)
+          case NotFoundError(cause)   => Json.fromString(cause)
+          case BadRequestError(cause) => Json.fromString(cause)
+        }
+      )
+    )
+
+  implicit val decoder: Decoder[CrawlerError] = (c: HCursor) => {
+    for {
+      error   <- c.downField("error").as[String]
+      message <- c.downField("message").as[String]
+    } yield error match {
+      case "UnexpectedError" => UnexpectedError(message)
+      case "ParserError"     => ParserError(message)
+      case "NotFoundError"   => NotFoundError(message)
+      case "BadRequestError" => BadRequestError(message)
+    }
+  }
+}

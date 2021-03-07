@@ -24,7 +24,7 @@ class AsyncXmlStreamParser[A](eventHandler: AsyncXmlEventHandler[A], reader: Asy
       val (results, handler) = handle(eventHandler).result
       Right((results, new AsyncXmlStreamParser[A](handler, reader)))
     } catch {
-      case e: Exception => Left(ParserError(e))
+      case e: Exception => Left(ParserError(e.getMessage))
     }
   }
 }
