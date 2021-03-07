@@ -15,14 +15,13 @@ class WebCrawlerRoutes[F[_]: Async] extends Http4sDsl[F] {
           .decode[TitlesRequest] { request =>
             service.getTitles(request).flatMap {
               case titles if titles.errors.isEmpty => Ok(titles.asJson)
-              case titles => InternalServerError(titles.asJson)
+              case titles                          => InternalServerError(titles.asJson)
             }
           }
           .handleErrorWith {
-            case e: BadRequestError =>
-              BadRequest(e.asJson)
-            case e: Exception       =>
-              BadRequest(BadRequestError(e.getMessage + e.getStackTrace.toList.mkString("\n")).asJson)
+            case e: Exception =>
+              val error: CrawlerError = UnexpectedError(e.getMessage + e.getStackTrace.toList.mkString("\n"))
+              InternalServerError(error.asJson)
           }
     }
 }
