@@ -15,7 +15,7 @@ class WebCrawlerRoutes[F[_]: Async] extends Http4sDsl[F] {
           .decode[TitlesRequest] { request =>
             service.getTitles(request).flatMap {
               case titles if titles.errors.isEmpty => Ok(titles.asJson)
-              case titles                          => InternalServerError(titles.asJson)
+              case titles                          => BadRequest(titles.asJson)
             }
           }
           .handleErrorWith {
