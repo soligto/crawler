@@ -17,7 +17,7 @@ case class GetTitleAttempt[F[_]](
 )
 
 object WebCrawlerService {
-  def apply[F[_]: Monad: Concurrent: BracketThrow](
+  def apply[F[_]: Monad: Concurrent](
     client: Client[F],
     titleParser: F[Parser[Tag]],
     parserPipe: Parser[Tag] => Pipe[F, Array[Byte], Either[CrawlerError, Tag]]
