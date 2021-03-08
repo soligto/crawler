@@ -1,7 +1,6 @@
 package crawler
 
 import cats.effect.{ ExitCode, IO, IOApp }
-import crawler.xml.{ AsyncXmlStreamParser, AsyncXmlTagEventHandler }
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.implicits._
 import org.http4s.server.Router
@@ -17,7 +16,7 @@ object App extends IOApp {
             "/" -> {
               val titleParser: IO[Parser[Tag]] = IO.pure(RegexTagParser("title"))
               val parserPipe                   = ParserPipe.apply[IO, Tag] _
-              new WebCrawlerRoutes[IO].routes(WebCrawlerService(client, titleParser, parserPipe))
+              new WebCrawlerRoutes[IO].routes(WebCrawlerService(client.stream, titleParser, parserPipe))
             }
           ).orNotFound
         }

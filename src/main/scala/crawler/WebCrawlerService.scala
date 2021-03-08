@@ -26,7 +26,7 @@ object WebCrawlerService {
   type GetTitleAttempt = Either[TitleError, Title]
 
   def apply[F[_]: Monad: Concurrent](
-    client: Client[F],
+    client: Request[F] => Stream[F, Response[F]],
     titleParser: F[Parser[Tag]],
     parserPipe: Parser[Tag] => Pipe[F, Array[Byte], Either[CrawlerError, Tag]]
   )(implicit ApplicativeError: ApplicativeError[F, Throwable]): WebCrawlerService[F] =
@@ -38,7 +38,8 @@ object WebCrawlerService {
        */
       private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt] = {
         Stream.eval(titleParser).flatMap { parser =>
-          response.body.chunks
+          response.body
+            .chunks
             .map(_.toArray)
             .through(parserPipe(parser))
             .take(1)
@@ -69,7 +70,7 @@ object WebCrawlerService {
                                 case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
                                 case Right(uri)  => Monad[F].pure(uri)
                               })
-                  response <- client.stream(Request(uri = uri))
+                  response <- client(Request(uri = uri))
                   value    <- responseToTitle(uri, response)
                 } yield value
               }.attempt.map {
