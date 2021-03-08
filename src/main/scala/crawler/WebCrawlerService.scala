@@ -32,8 +32,9 @@ object WebCrawlerService {
     new WebCrawlerService[F] {
 
       /**
-       * Конвертит response body в стрим и парсит его на наличие title.
-       * Стрим берёт первое распарсенное значение, а в случае отсутствия элемента возвращает ошибку Title not found.
+       * Преобразует response body в Stream и парсит элементы Tag из его содержимого.
+       * Найденный Tag преобразуются в GetTitleAttempt. Если Stream оказался пуст, то в результирующий Stream
+       * помещается NotFoundError.
        */
       private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt] = {
         Stream.eval(titleParser).flatMap { parser =>
@@ -50,7 +51,7 @@ object WebCrawlerService {
       }
 
       /**
-       * Осуществляет запрос на заданный uri и достаёт название страницы, если оно есть
+       * Осуществляет запрос на заданный uri для получения содержимого тега title
        */
       private def getTitle(uri: String): Stream[F, GetTitleAttempt] = {
         Uri.fromString(uri) match {
@@ -67,11 +68,9 @@ object WebCrawlerService {
       }
 
       /**
-       * Клиент отправляет запросы по каждому uri. Каждый response body преобразуется в стрим.
-       * Стрим парсится pipe'ом, который возвращает элементы по мере их появления.
-       * Как только заголовок найден, дальнейшая загрузка и парсинг response body не осуществляется.
-       * Если во время подготовки запроса или обращения на uri возникает ошибка, то она сохраняется в GetTitleAttempt.
-       * Вычисление результатов осуществляется конкурентно с помощью parJoinUnbounded.
+       * Метод преобразует список uri в список Stream'ов с результатами получения содержимого title.
+       * Каждый стрим вычисляется конкуренто с помощью parJoinUnbounded и далее группируется в два раздельных Chunk
+       * с успешными результатами и ошибками.
        */
       override def getTitles(request: TitlesRequest): F[TitlesResponse] = {
         if (request.uris.isEmpty) {
