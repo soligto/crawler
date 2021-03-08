@@ -4,7 +4,6 @@ import cats.effect.Concurrent
 import cats.syntax.functor._
 import cats.{ ApplicativeError, Monad }
 import fs2.{ Pipe, Stream }
-import org.http4s.client.Client
 import org.http4s.{ Request, Response, Uri }
 
 trait WebCrawlerService[F[_]] {
@@ -54,17 +53,16 @@ object WebCrawlerService {
        * Осуществляет запрос на заданный uri
        */
       private def getTitle(uri: String): Stream[F, GetTitleAttempt] = {
-        {
-          for {
-            uri      <- Stream.eval(Uri.fromString(uri) match {
-                          case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
-                          case Right(uri)  => Monad[F].pure(uri)
-                        })
-            response <- client(Request(uri = uri))
-            value    <- responseToTitle(uri, response)
-          } yield value
-        }.handleErrorWith { error =>
-          Stream(Left(TitleError(uri, UnexpectedError(error.getMessage))))
+        Uri.fromString(uri) match {
+          case Left(error)      => Stream(Left(TitleError(uri, BadRequestError(error.getMessage))))
+          case Right(parsedUri) => {
+              for {
+                response <- client(Request(uri = parsedUri))
+                value    <- responseToTitle(parsedUri, response)
+              } yield value
+            }.handleErrorWith { error =>
+              Stream(Left(TitleError(uri, UnexpectedError(error.getMessage))))
+            }
         }
       }
 
