@@ -5,6 +5,7 @@ import cats.{ ApplicativeError, Monad }
 import fs2.{ Pipe, Stream }
 import org.http4s.client.Client
 import org.http4s.{ Request, Response, Uri }
+import cats.syntax.functor._, cats.syntax.flatMap._
 
 trait WebCrawlerService[F[_]] {
   def getTitles(request: TitlesRequest): F[TitlesResponse]
@@ -77,12 +78,14 @@ object WebCrawlerService {
               }
             }.iterator
           }.parJoinUnbounded
-            .fold(TitlesResponse(Vector.empty, Vector.empty)) {
-              case (titles, Left(error))  => titles.copy(errors = titles.errors :+ error)
-              case (titles, Right(title)) => titles.copy(titles = titles.titles :+ title)
-            }
+            .groupAdjacentBy(_.isRight)
             .compile
-            .lastOrError
+            .to(Map)
+            .map { results =>
+              val titles = results.get(true).map(_.collect { case Right(title) => title }.toVector)
+              val errors = results.get(false).map(_.collect { case Left(titleError) => titleError }.toVector)
+              TitlesResponse(titles.getOrElse(Vector.empty), errors.getOrElse(Vector.empty))
+            }
         }
       }
     }
