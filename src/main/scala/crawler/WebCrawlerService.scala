@@ -67,7 +67,7 @@ object WebCrawlerService {
        * Если строка не является Uri, то соответствующий элемент преобразуется в Stream от ошибки A.
        * Если строка является Uri, то она преобразуется функцией в Stream элементов B.
        */
-      private def uriSeqToParStream[A, B](
+      private def transformUriSeq[A, B](
         uris: Seq[String]
       )(f: Uri => Stream[F, Either[A, B]])(g: (String, ParseFailure) => A): Stream[F, Either[A, B]] = {
         Stream
@@ -87,7 +87,7 @@ object WebCrawlerService {
         if (request.uris.isEmpty) {
           ApplicativeError.raiseError(BadRequestError("Uri list is empty"))
         } else {
-          uriSeqToParStream(request.uris) { uri =>
+          transformUriSeq(request.uris) { uri =>
             getTag(uri, titleParser)
               .take(1)
               .map {
