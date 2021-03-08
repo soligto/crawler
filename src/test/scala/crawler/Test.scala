@@ -32,8 +32,6 @@ object Test extends MockFactory {
   }
 
   val servicesModule = new ConfigModuleDef {
-    // мокирование не потокобезопасно, поэтому мок обёрнут в ресурс и снабжён семафором:
-    // только один тест может работать с Client[IO] в один момент времени
     make[ServiceProvider[IO]].from { (contextShift: ContextShift[IO]) =>
       implicit val cs = contextShift
       (client: Client[IO]) => WebCrawlerService[IO](
