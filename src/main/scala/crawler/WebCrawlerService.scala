@@ -10,17 +10,6 @@ trait WebCrawlerService[F[_]] {
   def getTitles(request: TitlesRequest): F[TitlesResponse]
 }
 
-case class GetTitleAttempt[F[_]](
-  uri: Either[String, Uri],
-  response: Option[Response[F]],
-  result: Either[CrawlerError, Tag]
-)
-object GetTitleAttempt {
-  def apply[F[_]](uri: String, error: CrawlerError): GetTitleAttempt[F] = {
-    GetTitleAttempt[F](Left(uri), None, Left(error))
-  }
-}
-
 object WebCrawlerService {
   type GetTitleAttempt = Either[TitleError, Title]
 
