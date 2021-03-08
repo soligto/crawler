@@ -57,9 +57,7 @@ class WebCrawlerServiceTest extends Test with MockFactory {
         for {
           titlesResponse <- service.getTitles(TitlesRequest(Vector("http://url")))
         } yield {
-          titlesResponse.errors shouldBe Vector(
-            TitleError(Right(uri"http://url"), "Response code 200 OK", Some(NotFoundError("Title not found")))
-          )
+          titlesResponse.errors shouldBe Vector(TitleError("http://url", NotFoundError("Title not found")))
           titlesResponse.titles shouldBe Vector()
         }
       }
@@ -74,9 +72,7 @@ class WebCrawlerServiceTest extends Test with MockFactory {
         for {
           titlesResponse <- service.getTitles(TitlesRequest(Vector("http://url")))
         } yield {
-          titlesResponse.errors shouldBe Vector(
-            TitleError(Left("http://url"), "Unexpected error", Some(UnexpectedError("connect error")))
-          )
+          titlesResponse.errors shouldBe Vector(TitleError("http://url", UnexpectedError("connect error")))
           titlesResponse.titles shouldBe Vector()
         }
       }

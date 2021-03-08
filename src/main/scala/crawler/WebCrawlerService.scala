@@ -22,6 +22,8 @@ object GetTitleAttempt {
 }
 
 object WebCrawlerService {
+  type GetTitleAttempt = Either[(String, CrawlerError), (Uri, Tag)]
+
   def apply[F[_]: Monad: Concurrent](
     client: Client[F],
     titleParser: F[Parser[Tag]],
@@ -33,16 +35,17 @@ object WebCrawlerService {
        * Конвертит response body в стрим и парсит его.
        * Стрим берёт первое распарсенное значение, а в случае отсутствия элемента возвращает ошибку Title not found.
        */
-      private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt[F]] = {
+      private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt] = {
         Stream.eval(titleParser).flatMap { parser =>
           response.body.chunks
             .map(_.toArray)
             .through(parserPipe(parser))
             .take(1)
-            .map { tag =>
-              GetTitleAttempt[F](Right(uri), Some(response), tag)
+            .map {
+              case Left(error)  => Left(uri.renderString -> error)
+              case Right(title) => Right(uri -> title)
             }
-            .lastOr(GetTitleAttempt[F](Right(uri), Some(response), Left(NotFoundError("Title not found"))))
+            .lastOr(Left(uri.renderString -> NotFoundError("Title not found")))
         }
       }
 
@@ -50,29 +53,12 @@ object WebCrawlerService {
        * Добавляет попытку получения заголовка GetTitleAttempt в TitlesResponse
        * В зависимости от наличия ошибок парсинга, элемент попадает либо в массив titles, либо в массив errors.
        */
-      private def attemptToTitlesResponse(titles: TitlesResponse, attempt: GetTitleAttempt[F]): TitlesResponse = {
+      private def attemptToTitlesResponse(titles: TitlesResponse, attempt: GetTitleAttempt): TitlesResponse = {
         attempt match {
-          case GetTitleAttempt(uri, response, Left(error)) =>
-            error match {
-              case error: UnexpectedError =>
-                titles.copy(errors = TitleError(uri, "Unexpected error", Some(error)) +: titles.errors)
-              case error: ParserError     =>
-                titles.copy(errors = TitleError(uri, "Error during parsing html", Some(error)) +: titles.errors)
-              case error: BadRequestError =>
-                titles.copy(errors = TitleError(uri, "Request part is malformed", Some(error)) +: titles.errors)
-              case error: NotFoundError   =>
-                titles.copy(errors =
-                  TitleError(
-                    uri,
-                    s"Response code ${response.map(_.status.toString()).getOrElse("")}",
-                    Some(error)
-                  ) +: titles.errors
-                )
-            }
-          case GetTitleAttempt(uri @ Left(_), _, _)        =>
-            titles.copy(errors = TitleError(uri, s"Not a uri", None) +: titles.errors)
-          case GetTitleAttempt(Right(uri), _, Right(tag))  =>
-            titles.copy(titles = Title(uri, tag.content) +: titles.titles)
+          case Left((uri, error)) =>
+            titles.copy(errors = TitleError(uri, error) +: titles.errors)
+          case Right((uri, title)) =>
+            titles.copy(titles = Title(uri, title.content) +: titles.titles)
         }
       }
 
@@ -99,8 +85,8 @@ object WebCrawlerService {
                   value    <- responseToTitle(uri, response)
                 } yield value
               }.attempt.map {
-                case Left(error: CrawlerError) => GetTitleAttempt[F](uri, error)
-                case Left(error)               => GetTitleAttempt[F](uri, UnexpectedError(error.getMessage))
+                case Left(error: CrawlerError) => Left(uri, error)
+                case Left(error)               => Left(uri, UnexpectedError(error.getMessage))
                 case Right(attempt)            => attempt
               }
             }.iterator
