@@ -22,7 +22,7 @@ object GetTitleAttempt {
 }
 
 object WebCrawlerService {
-  type GetTitleAttempt = Either[(String, CrawlerError), (Uri, Tag)]
+  type GetTitleAttempt = Either[TitleError, Title]
 
   def apply[F[_]: Monad: Concurrent](
     client: Client[F],
@@ -42,23 +42,10 @@ object WebCrawlerService {
             .through(parserPipe(parser))
             .take(1)
             .map {
-              case Left(error)  => Left(uri.renderString -> error)
-              case Right(title) => Right(uri -> title)
+              case Left(error)  => Left(TitleError(uri.renderString, error))
+              case Right(title) => Right(Title(uri, title.content))
             }
-            .lastOr(Left(uri.renderString -> NotFoundError("Title not found")))
-        }
-      }
-
-      /**
-       * Добавляет попытку получения заголовка GetTitleAttempt в TitlesResponse
-       * В зависимости от наличия ошибок парсинга, элемент попадает либо в массив titles, либо в массив errors.
-       */
-      private def attemptToTitlesResponse(titles: TitlesResponse, attempt: GetTitleAttempt): TitlesResponse = {
-        attempt match {
-          case Left((uri, error)) =>
-            titles.copy(errors = TitleError(uri, error) +: titles.errors)
-          case Right((uri, title)) =>
-            titles.copy(titles = Title(uri, title.content) +: titles.titles)
+            .lastOr(Left(TitleError(uri.renderString, NotFoundError("Title not found"))))
         }
       }
 
@@ -84,14 +71,13 @@ object WebCrawlerService {
                   response <- client.stream(Request(uri = uri))
                   value    <- responseToTitle(uri, response)
                 } yield value
-              }.attempt.map {
-                case Left(error: CrawlerError) => Left(uri, error)
-                case Left(error)               => Left(uri, UnexpectedError(error.getMessage))
-                case Right(attempt)            => attempt
               }
             }.iterator
           }.parJoinUnbounded
-            .fold(TitlesResponse(Vector.empty, Vector.empty))(attemptToTitlesResponse)
+            .fold(TitlesResponse(Vector.empty, Vector.empty)) {
+              case (titles, Left(error))  => titles.copy(errors = titles.errors :+ error)
+              case (titles, Right(title)) => titles.copy(titles = titles.titles :+ title)
+            }
             .compile
             .lastOrError
         }
