@@ -5,8 +5,8 @@ import crawler.Tag
 import scala.collection.immutable.ArraySeq
 
 /**
- * Парсер тегов.
- * Поиск осуществляется по всем встреченным тегам с подходящем именем, с учётом вложенности.
+ * Обработчик событий AsyncXmlStreamParser.
+ * Обнаруживает теги с заданным именем и отбирает их с учётом возможной вложенности.
  */
 case class AsyncXmlTagEventHandler(
   tag: String,
@@ -15,7 +15,7 @@ case class AsyncXmlTagEventHandler(
   private val currentIndex: Int = 0,               // текущий индекс
   private val buffer: ArraySeq[Byte] = ArraySeq(), // буффер содержимого найденного элемента
   private val parent: Option[AsyncXmlTagEventHandler] =
-    None,                                          // родительский элемент, если подходящие по названию элементы являются вложенными
+    None,                                          // родительский handler, если подходящие по названию элементы являются вложенными
   private val results: Vector[Tag] = Vector.empty  // список результатов
 ) extends AsyncXmlEventHandler[Tag] {
 

@@ -68,9 +68,9 @@ object WebCrawlerService {
       }
 
       /**
-       * Метод преобразует список uri в список Stream'ов с результатами получения содержимого title.
-       * Каждый стрим вычисляется конкуренто с помощью parJoinUnbounded и далее группируется в два раздельных Chunk
-       * с успешными результатами и ошибками.
+       * Метод преобразует список Uri в список Stream с результатами получения содержимого title.
+       * Каждый стрим вычисляется конкуренто с помощью parJoinUnbounded и далее группируется в два раздельных Chunk:
+       * с успешно полученными title и ошибками.
        */
       override def getTitles(request: TitlesRequest): F[TitlesResponse] = {
         if (request.uris.isEmpty) {

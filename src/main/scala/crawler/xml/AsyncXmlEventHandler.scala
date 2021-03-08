@@ -2,12 +2,14 @@ package crawler.xml
 
 /**
  * Изначальная идея заключалась в использовании асинхронного парсера FasterXML / aalto-xml.
- * Однако я не учёл, что он не всегда сможет распарсить реальный html, который может являться невалидным xml.
- *
- * Тем не менее, работает это так, что AsyncXmlStreamReader парсит XML по мере загрузки response body
- * и обрабатывает события в AsyncXmlEventHandler.
+ * Однако я не учёл, что он не всегда сможет распарсить реальный html, который может быть невалидным xml.
  *
  * В итоге реализовал более простое решение в RegexTagParser, но этот код решил оставить для примера такого варианта работы.
+ *
+ * AsyncXmlEventHandler обрабатывает события, наступающие в AsyncXmlStreamReader по мере разбора XML.
+ *
+ * При завершении парсинга фрамента данных или при возврате true методом finished AsyncXmlStreamReader забриает доступные результаты
+ * через вызов метода result.
  */
 trait AsyncXmlEventHandler[A] {
   type Self = AsyncXmlEventHandler[A]
