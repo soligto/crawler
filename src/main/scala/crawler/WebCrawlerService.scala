@@ -63,9 +63,8 @@ object WebCrawlerService {
             response <- client(Request(uri = uri))
             value    <- responseToTitle(uri, response)
           } yield value
-        }.attempt.map {
-          case Left(error)    => Left(TitleError(uri, UnexpectedError(error.getMessage)))
-          case Right(attempt) => attempt
+        }.handleErrorWith { error =>
+          Stream(Left(TitleError(uri, UnexpectedError(error.getMessage))))
         }
       }
 
