@@ -4,9 +4,8 @@ import cats.effect.IO
 import fs2.Stream
 import org.http4s.implicits.http4sLiteralsSyntax
 import org.http4s.{ Request, Response }
-import org.scalamock.scalatest.MockFactory
 
-class WebCrawlerServiceTest extends Test with MockFactory {
+class WebCrawlerServiceTest extends Test {
   "WebCrawlerService" should {
     "return a title of the requested web page" in { (service: Test.ServiceProvider[IO]) =>
       {
