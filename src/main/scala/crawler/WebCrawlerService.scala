@@ -38,8 +38,7 @@ object WebCrawlerService {
        */
       private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt] = {
         Stream.eval(titleParser).flatMap { parser =>
-          response.body
-            .chunks
+          response.body.chunks
             .map(_.toArray)
             .through(parserPipe(parser))
             .take(1)
@@ -48,6 +47,25 @@ object WebCrawlerService {
               case Right(title) => Right(Title(uri, title.content))
             }
             .lastOr(Left(TitleError(uri.renderString, NotFoundError("Title not found"))))
+        }
+      }
+
+      /**
+       * Осуществляет запрос на заданный uri
+       */
+      private def getTitle(uri: String): Stream[F, GetTitleAttempt] = {
+        {
+          for {
+            uri      <- Stream.eval(Uri.fromString(uri) match {
+                          case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
+                          case Right(uri)  => Monad[F].pure(uri)
+                        })
+            response <- client(Request(uri = uri))
+            value    <- responseToTitle(uri, response)
+          } yield value
+        }.attempt.map {
+          case Left(error)    => Left(TitleError(uri, UnexpectedError(error.getMessage)))
+          case Right(attempt) => attempt
         }
       }
 
@@ -63,21 +81,7 @@ object WebCrawlerService {
           ApplicativeError.raiseError(BadRequestError("Uri list is empty"))
         } else {
           Stream.fromIterator {
-            request.uris.map { uri =>
-              {
-                for {
-                  uri      <- Stream.eval(Uri.fromString(uri) match {
-                                case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
-                                case Right(uri)  => Monad[F].pure(uri)
-                              })
-                  response <- client(Request(uri = uri))
-                  value    <- responseToTitle(uri, response)
-                } yield value
-              }.attempt.map {
-                case Left(error)    => Left(TitleError(uri, UnexpectedError(error.getMessage)))
-                case Right(attempt) => attempt
-              }
-            }.iterator
+            request.uris.map(getTitle).iterator
           }.parJoinUnbounded
             .groupAdjacentBy(_.isRight)
             .compile
