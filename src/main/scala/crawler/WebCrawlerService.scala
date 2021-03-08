@@ -4,7 +4,7 @@ import cats.effect.Concurrent
 import cats.syntax.functor._
 import cats.{ ApplicativeError, Monad }
 import fs2.{ Pipe, Stream }
-import org.http4s.{ Request, Response, Uri }
+import org.http4s.{ ParseFailure, Request, Response, Uri }
 
 trait WebCrawlerService[F[_]] {
   def getTitles(request: TitlesRequest): F[TitlesResponse]
@@ -40,53 +40,64 @@ object WebCrawlerService {
 
       /**
        * Преобразует response body в Stream и парсит элементы Tag из его содержимого.
-       * Найденный Tag преобразуются в GetTitleAttempt. Если Stream оказался пуст, то в результирующий Stream
-       * помещается NotFoundError.
        */
-      private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt] = {
-        Stream.eval(titleParser).flatMap { parser =>
-          response.body.chunks
-            .map(_.toArray)
-            .through(parserPipe(parser))
-            .take(1)
-            .map {
-              case Left(error)  => Left(TitleError(uri.renderString, error))
-              case Right(title) => Right(Title(uri, title.content))
-            }
-            .lastOr(Left(TitleError(uri.renderString, NotFoundError("Title not found"))))
+      private def responseToTag(response: Response[F], parser: Parser[Tag]): Stream[F, Either[CrawlerError, Tag]] = {
+        response.body.chunks
+          .map(_.toArray)
+          .through(parserPipe(parser))
+      }
+
+      /**
+       * Осуществляет запрос на заданный uri для получения заданного Tag
+       */
+      private def getTag(uri: Uri, parserF: F[Parser[Tag]]): Stream[F, Either[CrawlerError, Tag]] = {
+        {
+          for {
+            parser   <- Stream.eval(parserF)
+            response <- client(Request(uri = uri))
+            value    <- responseToTag(response, parser)
+          } yield value
+        }.handleErrorWith { error =>
+          Stream(Left(UnexpectedError(error.getMessage)))
         }
       }
 
       /**
-       * Осуществляет запрос на заданный uri для получения содержимого тега title
+       * Метод, трансформирующий список запрошенных uri в Stream.
+       * Если строка не является Uri, то соответствующий элемент преобразуется в Stream от ошибки A.
+       * Если строка является Uri, то она преобразуется функцией в Stream элементов B.
        */
-      private def getTitle(uri: String): Stream[F, GetTitleAttempt] = {
-        Uri.fromString(uri) match {
-          case Left(error)      => Stream(Left(TitleError(uri, BadRequestError(error.getMessage))))
-          case Right(parsedUri) => {
-              for {
-                response <- client(Request(uri = parsedUri))
-                value    <- responseToTitle(parsedUri, response)
-              } yield value
-            }.handleErrorWith { error =>
-              Stream(Left(TitleError(uri, UnexpectedError(error.getMessage))))
+      private def uriSeqToParStream[A, B](
+        uris: Seq[String]
+      )(f: Uri => Stream[F, Either[A, B]])(g: (String, ParseFailure) => A): Stream[F, Either[A, B]] = {
+        Stream
+          .emits(uris.map { uri =>
+            Uri.fromString(uri) match {
+              case Left(error) => Stream(Left(g(uri, error)))
+              case Right(uri)  => f(uri)
             }
-        }
+          })
+          .parJoinUnbounded
       }
 
       /**
-       * Метод преобразует список Uri в список Stream с результатами получения содержимого title.
-       * Каждый стрим вычисляется конкуренто с помощью parJoinUnbounded и далее группируется в два раздельных Chunk:
-       * с успешно полученными title и ошибками.
+       * Метод преобразует список uri в Stream Title или TitleError, если title не удалось получить.
        */
       override def getTitles(request: TitlesRequest): F[TitlesResponse] = {
         if (request.uris.isEmpty) {
           ApplicativeError.raiseError(BadRequestError("Uri list is empty"))
         } else {
-          Stream.emits {
-            request.uris.map(getTitle)
-          }.parJoinUnbounded
-            .groupAdjacentBy(_.isRight)
+          uriSeqToParStream(request.uris) { uri =>
+            getTag(uri, titleParser)
+              .take(1)
+              .map {
+                case Left(error) => Left(TitleError(uri.renderString, error))
+                case Right(tag)  => Right(Title(uri, tag.content))
+              }
+              .lastOr(Left(TitleError(uri.renderString, NotFoundError("Title not found"))))
+          } { (uri, parseFailure) =>
+            TitleError(uri, BadRequestError(parseFailure.getMessage()))
+          }.groupAdjacentBy(_.isRight)
             .compile
             .to(Map)
             .map { results =>
