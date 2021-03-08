@@ -82,9 +82,9 @@ object WebCrawlerService {
             .compile
             .to(Map)
             .map { results =>
-              val titles = results.get(true).map(_.collect { case Right(title) => title }.toVector)
-              val errors = results.get(false).map(_.collect { case Left(titleError) => titleError }.toVector)
-              TitlesResponse(titles.getOrElse(Vector.empty), errors.getOrElse(Vector.empty))
+              val titles = results.get(true).fold(Vector.empty)(_.collect { case Right(title) => title }.toVector)
+              val errors = results.get(false).fold(Vector.empty)(_.collect { case Left(error) => error }.toVector)
+              TitlesResponse(titles, errors)
             }
         }
       }
