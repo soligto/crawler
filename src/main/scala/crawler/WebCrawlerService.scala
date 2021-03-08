@@ -12,10 +12,10 @@ trait WebCrawlerService[F[_]] {
 }
 
 case class GetTitleAttempt[F[_]](
-  uri: Either[String, Uri],
-  response: Option[Response[F]],
-  result: Either[CrawlerError, Tag]
-)
+                                  uri: Either[String, Uri],
+                                  response: Option[Response[F]],
+                                  result: Either[CrawlerError, Tag]
+                                )
 object GetTitleAttempt {
   def apply[F[_]](uri: String, error: CrawlerError): GetTitleAttempt[F] = {
     GetTitleAttempt[F](Left(uri), None, Left(error))
@@ -26,10 +26,10 @@ object WebCrawlerService {
   type GetTitleAttempt = Either[TitleError, Title]
 
   def apply[F[_]: Monad: Concurrent](
-    client: Client[F],
-    titleParser: F[Parser[Tag]],
-    parserPipe: Parser[Tag] => Pipe[F, Array[Byte], Either[CrawlerError, Tag]]
-  )(implicit ApplicativeError: ApplicativeError[F, Throwable]): WebCrawlerService[F] =
+                                      client: Client[F],
+                                      titleParser: F[Parser[Tag]],
+                                      parserPipe: Parser[Tag] => Pipe[F, Array[Byte], Either[CrawlerError, Tag]]
+                                    )(implicit ApplicativeError: ApplicativeError[F, Throwable]): WebCrawlerService[F] =
     new WebCrawlerService[F] {
 
       /**
@@ -66,9 +66,9 @@ object WebCrawlerService {
               {
                 for {
                   uri      <- Stream.eval(Uri.fromString(uri) match {
-                                case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
-                                case Right(uri)  => Monad[F].pure(uri)
-                              })
+                    case Left(error) => ApplicativeError.raiseError[Uri](BadRequestError(error.getMessage))
+                    case Right(uri)  => Monad[F].pure(uri)
+                  })
                   response <- client.stream(Request(uri = uri))
                   value    <- responseToTitle(uri, response)
                 } yield value
@@ -90,3 +90,4 @@ object WebCrawlerService {
       }
     }
 }
+\
