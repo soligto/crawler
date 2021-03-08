@@ -80,8 +80,8 @@ object WebCrawlerService {
         if (request.uris.isEmpty) {
           ApplicativeError.raiseError(BadRequestError("Uri list is empty"))
         } else {
-          Stream.fromIterator {
-            request.uris.map(getTitle).iterator
+          Stream.emits {
+            request.uris.map(getTitle)
           }.parJoinUnbounded
             .groupAdjacentBy(_.isRight)
             .compile
