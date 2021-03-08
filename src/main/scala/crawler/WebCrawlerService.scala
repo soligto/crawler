@@ -24,6 +24,13 @@ object GetTitleAttempt {
 object WebCrawlerService {
   type GetTitleAttempt = Either[TitleError, Title]
 
+  /**
+   * Реализация  WebCrawlerService по умолчанию, использующая fs.Stream для конкурентного вычисления списка содержимого
+   * определенного тега запрошенных страниц.
+   * @param client           клиент, преобразующий http запрос в Stream с содержимым ответа
+   * @param titleParser      парсер массива байт в список Tag.
+   * @param parserPipe       pipe, преобразующая Stream массивов байт в Stream элементов типа Tag
+   */
   def apply[F[_]: Monad: Concurrent](
     client: Request[F] => Stream[F, Response[F]],
     titleParser: F[Parser[Tag]],
