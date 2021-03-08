@@ -39,23 +39,17 @@ object WebCrawlerService {
     new WebCrawlerService[F] {
 
       /**
-       * Преобразует response body в Stream и парсит элементы Tag из его содержимого.
-       */
-      private def responseToTag(response: Response[F], parser: Parser[Tag]): Stream[F, Either[CrawlerError, Tag]] = {
-        response.body.chunks
-          .map(_.toArray)
-          .through(parserPipe(parser))
-      }
-
-      /**
-       * Осуществляет запрос на заданный uri для получения заданного Tag
+       * Осуществляет запрос на заданный uri и преобразует response body в Stream
+       * элементов Tag, либо ошибок CrawlerError
        */
       private def getTag(uri: Uri, parserF: F[Parser[Tag]]): Stream[F, Either[CrawlerError, Tag]] = {
         {
           for {
             parser   <- Stream.eval(parserF)
             response <- client(Request(uri = uri))
-            value    <- responseToTag(response, parser)
+            value    <- response.body.chunks
+                          .map(_.toArray)
+                          .through(parserPipe(parser))
           } yield value
         }.handleErrorWith { error =>
           Stream(Left(UnexpectedError(error.getMessage)))
