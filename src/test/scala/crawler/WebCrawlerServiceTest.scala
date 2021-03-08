@@ -1,10 +1,9 @@
 package crawler
 
-import cats.effect.{ ContextShift, IO }
+import cats.effect.IO
 import fs2.Stream
-import org.http4s.{ Request, Response }
-import org.http4s.client.Client
 import org.http4s.implicits.http4sLiteralsSyntax
+import org.http4s.{ Request, Response }
 import org.scalamock.scalatest.MockFactory
 
 class WebCrawlerServiceTest extends Test with MockFactory {

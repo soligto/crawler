@@ -1,12 +1,12 @@
 package crawler
 
-import cats.effect.{ ContextShift, IO }
+import cats.effect.{ContextShift, IO}
 import distage.DIKey
 import fs2.Stream
 import izumi.distage.config.ConfigModuleDef
-import izumi.distage.plugins.{ PluginConfig, PluginDef }
-import izumi.distage.testkit.scalatest.{ AssertCIO, Spec1 }
-import org.http4s.{ Request, Response }
+import izumi.distage.plugins.{PluginConfig, PluginDef}
+import izumi.distage.testkit.scalatest.{AssertCIO, Spec1}
+import org.http4s.{Request, Response}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
 
@@ -34,11 +34,12 @@ object Test extends MockFactory {
   val servicesModule = new ConfigModuleDef {
     make[ServiceProvider[IO]].from { (contextShift: ContextShift[IO]) =>
       implicit val cs = contextShift
-      (client: Client[IO]) => WebCrawlerService[IO](
-        client,
-        IO.pure(RegexTagParser("title")),
-        ParserPipe.apply[IO, Tag]
-      )
+      (client: Client[IO]) =>
+        WebCrawlerService[IO](
+          client,
+          IO.pure(RegexTagParser("title")),
+          ParserPipe.apply[IO, Tag]
+        )
     }
   }
 
