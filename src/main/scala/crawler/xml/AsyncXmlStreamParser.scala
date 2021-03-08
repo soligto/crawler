@@ -16,10 +16,11 @@ class AsyncXmlStreamParser[A](eventHandler: AsyncXmlEventHandler[A], reader: Asy
       if (eh.finished) eh
       else
         reader.next match {
-          case XMLStreamConstants.START_ELEMENT => handle(eh.onElementStart(reader.getName.getLocalPart))
-          case XMLStreamConstants.END_ELEMENT   => handle(eh.onElementEnd(reader.getName.getLocalPart))
-          case XMLStreamConstants.CHARACTERS    => handle(eh.onCharacters(reader.getText))
-          case _                                => handle(eh)
+          case XMLStreamConstants.START_ELEMENT  => handle(eh.onElementStart(reader.getName.getLocalPart))
+          case XMLStreamConstants.END_ELEMENT    => handle(eh.onElementEnd(reader.getName.getLocalPart))
+          case XMLStreamConstants.CHARACTERS     => handle(eh.onCharacters(reader.getText))
+          case AsyncXmlStreamParser.XmlStreamEnd => eh
+          case _                                 => handle(eh)
         }
 
     try {
