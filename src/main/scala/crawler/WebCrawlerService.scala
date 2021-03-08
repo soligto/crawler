@@ -25,8 +25,8 @@ object WebCrawlerService {
   type GetTitleAttempt = Either[TitleError, Title]
 
   /**
-   * Реализация  WebCrawlerService по умолчанию, использующая fs2.Stream для конкурентного вычисления списка содержимого
-   * определенного тега запрошенных страниц.
+   * Реализация  WebCrawlerService по умолчанию, использующая fs2.Stream для конкурентного вычисления содержимого
+   * определенного тега по списку запрошенных страниц.
    * @param client           клиент, преобразующий http запрос в Stream с содержимым ответа
    * @param titleParser      парсер массива байт в список Tag.
    * @param parserPipe       pipe, преобразующая Stream массивов байт в Stream элементов типа Tag
