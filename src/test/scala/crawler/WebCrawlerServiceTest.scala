@@ -13,7 +13,7 @@ class WebCrawlerServiceTest extends Test with MockFactory {
       {
         val client = (_: Request[IO]) => {
           Stream(Response[IO](body = Stream("<html>", "<title>", "test title", "</title>").flatMap { part =>
-            Stream.fromIterator[IO](part.getBytes.iterator)
+            Stream.emits(part.getBytes)
           }))
         }
 
@@ -30,7 +30,7 @@ class WebCrawlerServiceTest extends Test with MockFactory {
       {
         val client = (_: Request[IO]) => {
           Stream(Response[IO](body = Stream("<html>", "</html>").flatMap { part =>
-            Stream.fromIterator[IO](part.getBytes.iterator)
+            Stream.emits(part.getBytes)
           }))
         }
 
@@ -45,7 +45,7 @@ class WebCrawlerServiceTest extends Test with MockFactory {
 
     "return an error because of the error response" in { (service: Test.ServiceProvider[IO]) =>
       {
-        val client = (_: Request[IO]) => Stream.eval(IO.raiseError(new RuntimeException("connect error")))
+        val client = (_: Request[IO]) => Stream.raiseError[IO](new RuntimeException("connect error"))
 
         for {
           titlesResponse <- service(client).getTitles(TitlesRequest(Vector("http://url")))
