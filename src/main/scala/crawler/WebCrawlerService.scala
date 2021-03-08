@@ -32,7 +32,7 @@ object WebCrawlerService {
     new WebCrawlerService[F] {
 
       /**
-       * Конвертит response body в стрим и парсит его.
+       * Конвертит response body в стрим и парсит его на наличие title.
        * Стрим берёт первое распарсенное значение, а в случае отсутствия элемента возвращает ошибку Title not found.
        */
       private def responseToTitle(uri: Uri, response: Response[F]): Stream[F, GetTitleAttempt] = {
@@ -50,7 +50,7 @@ object WebCrawlerService {
       }
 
       /**
-       * Осуществляет запрос на заданный uri
+       * Осуществляет запрос на заданный uri и достаёт название страницы, если оно есть
        */
       private def getTitle(uri: String): Stream[F, GetTitleAttempt] = {
         Uri.fromString(uri) match {
