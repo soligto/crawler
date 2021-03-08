@@ -82,8 +82,8 @@ object WebCrawlerService {
             .compile
             .to(Map)
             .map { results =>
-              val titles = results.get(true).fold(Vector.empty)(_.collect { case Right(title) => title }.toVector)
-              val errors = results.get(false).fold(Vector.empty)(_.collect { case Left(error) => error }.toVector)
+              val titles = results.get(true).fold(Vector.empty[Title])(_.collect { case Right(title) => title }.toVector)
+              val errors = results.get(false).fold(Vector.empty[TitleError])(_.collect { case Left(error) => error }.toVector)
               TitlesResponse(titles, errors)
             }
         }
