@@ -69,7 +69,7 @@ object WebCrawlerService {
        */
       private def transformUriSeq[A, B](
         uris: Seq[String]
-      )(f: Uri => Stream[F, Either[A, B]])(g: (String, ParseFailure) => A): Stream[F, Either[A, B]] = {
+      )(f: Uri => Stream[F, Either[A, B]])(g: (String, ParseFailure) => A): Stream[F, Stream[F, Either[A, B]]] = {
         Stream
           .emits(uris.map { uri =>
             Uri.fromString(uri) match {
@@ -77,7 +77,6 @@ object WebCrawlerService {
               case Right(uri)  => f(uri)
             }
           })
-          .parJoinUnbounded
       }
 
       /**
@@ -97,7 +96,8 @@ object WebCrawlerService {
               .lastOr(Left(TitleError(uri.renderString, NotFoundError("Title not found"))))
           } { (uri, parseFailure) =>
             TitleError(uri, BadRequestError(parseFailure.getMessage()))
-          }.groupAdjacentBy(_.isRight)
+          }.parJoinUnbounded
+            .groupAdjacentBy(_.isRight)
             .compile
             .to(Map)
             .map { results =>
