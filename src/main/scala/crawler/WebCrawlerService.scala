@@ -1,8 +1,7 @@
 package crawler
 
-import cats.effect.{ Concurrent, IO }
+import cats.effect.Concurrent
 import cats.syntax.functor._
-import cats.syntax.flatMap._
 import cats.{ ApplicativeError, Monad }
 import fs2.{ Pipe, Stream }
 import logstage.LogIO
