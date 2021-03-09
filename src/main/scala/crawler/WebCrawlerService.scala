@@ -1,9 +1,11 @@
 package crawler
 
-import cats.effect.Concurrent
+import cats.effect.{ Concurrent, IO }
 import cats.syntax.functor._
+import cats.syntax.flatMap._
 import cats.{ ApplicativeError, Monad }
 import fs2.{ Pipe, Stream }
+import logstage.LogIO
 import org.http4s.{ ParseFailure, Request, Response, Uri }
 
 trait WebCrawlerService[F[_]] {
@@ -20,7 +22,7 @@ object WebCrawlerService {
    * @param titleParser      парсер массива байт в список Tag.
    * @param parserPipe       pipe, преобразующая Stream массивов байт в Stream элементов типа Tag
    */
-  def apply[F[_]: Monad: Concurrent](
+  def apply[F[_]: Monad: Concurrent: LogIO](
     client: Request[F] => Stream[F, Response[F]],
     titleParser: F[Parser[Tag]],
     parserPipe: Parser[Tag] => Pipe[F, Array[Byte], Either[CrawlerError, Tag]]
@@ -41,7 +43,9 @@ object WebCrawlerService {
                           .through(parserPipe(parser))
           } yield value
         }.handleErrorWith { error =>
-          Stream(Left(UnexpectedError(error.getMessage)))
+          Stream
+            .emit(Left(UnexpectedError(error.getMessage)))
+            .evalTap(_ => LogIO[F].error(s"Failed to parse tags from $uri: $error"))
         }
       }
 
@@ -53,13 +57,15 @@ object WebCrawlerService {
       private def transformUriSeq[A, B](
         uris: Seq[String]
       )(f: Uri => Stream[F, Either[A, B]])(g: (String, ParseFailure) => A): Stream[F, Stream[F, Either[A, B]]] = {
-        Stream
-          .emits(uris.map { uri =>
-            Uri.fromString(uri) match {
-              case Left(error) => Stream(Left(g(uri, error)))
-              case Right(uri)  => f(uri)
-            }
-          })
+        Stream.emits(uris.map { uri =>
+          Uri.fromString(uri) match {
+            case Right(uri)  => f(uri)
+            case Left(error) =>
+              Stream
+                .emit(Left(g(uri, error)))
+                .evalTap(_ => LogIO[F].error(s"Failed to parse $uri"))
+          }
+        })
       }
 
       /**
@@ -77,6 +83,10 @@ object WebCrawlerService {
                 case Right(tag)  => Right(Title(uri, tag.content))
               }
               .lastOr(Left(TitleError(uri.renderString, NotFoundError("Title not found"))))
+              .evalTap {
+                case Left(error)  => LogIO[F].error(s"Failed to find a title: $error")
+                case Right(title) => LogIO[F].debug(s"Found a title: $title")
+              }
           } { (uri, parseFailure) =>
             TitleError(uri, BadRequestError(parseFailure.getMessage()))
           }.parJoinUnbounded

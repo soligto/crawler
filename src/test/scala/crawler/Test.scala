@@ -6,6 +6,7 @@ import fs2.Stream
 import izumi.distage.config.ConfigModuleDef
 import izumi.distage.plugins.{PluginConfig, PluginDef}
 import izumi.distage.testkit.scalatest.{AssertCIO, Spec1}
+import logstage.LogIO
 import org.http4s.{Request, Response}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers
@@ -32,8 +33,9 @@ object Test extends MockFactory {
   }
 
   val servicesModule = new ConfigModuleDef {
-    make[ServiceProvider[IO]].from { (contextShift: ContextShift[IO]) =>
+    make[ServiceProvider[IO]].from { (contextShift: ContextShift[IO], logIO: LogIO[IO]) =>
       implicit val cs = contextShift
+      implicit val log = logIO
       (client: Client[IO]) =>
         WebCrawlerService[IO](
           client,

@@ -3,10 +3,10 @@ package crawler
 import io.circe.{ Decoder, Encoder, HCursor, Json }
 
 sealed trait CrawlerError
-case class UnexpectedError(cause: String) extends Exception(cause) with CrawlerError
-case class ParserError(cause: String)     extends Exception(cause) with CrawlerError
-case class NotFoundError(cause: String)   extends Exception(cause) with CrawlerError
-case class BadRequestError(cause: String) extends Exception(cause) with CrawlerError
+case class UnexpectedError(cause: String) extends Exception(cause, null, true, false) with CrawlerError
+case class ParserError(cause: String)     extends Exception(cause, null, true, false) with CrawlerError
+case class NotFoundError(cause: String)   extends Exception(cause, null, true, false) with CrawlerError
+case class BadRequestError(cause: String) extends Exception(cause, null, true, false) with CrawlerError
 
 object CrawlerError {
   implicit val encoder: Encoder[CrawlerError] = (error: CrawlerError) =>
