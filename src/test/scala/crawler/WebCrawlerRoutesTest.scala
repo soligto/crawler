@@ -12,10 +12,12 @@ class WebCrawlerRoutesTest extends Test {
   "WebCrawlerRoutes" should {
     "return a title of the requested web page" in { () =>
       {
-        val serviceResult                  = TitlesResponse(Vector(Title(uri"http://url", "title")), Vector())
-        val service: WebCrawlerService[IO] = _ => IO.pure(serviceResult)
-
         for {
+          serviceResult  <- IO(TitlesResponse(Vector(Title(uri"http://url", "title")), Vector()))
+          service        <- IO {
+                              val service: WebCrawlerService[IO] = _ => IO.pure(serviceResult)
+                              service
+                            }
           request        <- POST(TitlesRequest(Vector("http://url")).asJson, uri"/titles")
           response       <- new WebCrawlerRoutes[IO].routes(service).orNotFound.run(request)
           body           <- response.body.compile.toVector.map(bytes => new String(bytes.toArray))
